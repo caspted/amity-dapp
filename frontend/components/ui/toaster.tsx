@@ -25,7 +25,7 @@ export function Toaster() {
         <div
           key={t.id}
           className={cn(
-            "flex items-start gap-3 rounded-lg border bg-card p-4 shadow-lg animate-in slide-in-from-right-full duration-300",
+            "motion-slide-right flex items-start gap-3 rounded-lg border bg-card p-4 shadow-lg",
             t.variant === "error" && "border-destructive/50",
             t.variant === "success" && "border-success/50",
             t.variant === "warning" && "border-warning/50"

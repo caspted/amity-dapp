@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useQueryClient } from "@tanstack/react-query";
 import { parseEther, type Address } from "viem";
 import Link from "next/link";
 import { Plus, Trash2, ArrowLeft, AlertCircle } from "lucide-react";
@@ -35,10 +36,19 @@ export default function NewProjectPage() {
   const [milestones, setMilestones] = useState<MilestoneField[]>([newMilestone()]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const queryClient = useQueryClient();
   const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const isLoading = isPending || isConfirming;
+
+  useEffect(() => {
+    if (isSuccess) {
+      queryClient.invalidateQueries();
+      toast({ title: "Project deployed successfully!", variant: "success" });
+      router.push("/dashboard");
+    }
+  }, [isSuccess, queryClient, router]);
 
   const totalEth = milestones.reduce((sum, m) => {
     const n = parseFloat(m.amount) || 0;
@@ -100,9 +110,6 @@ export default function NewProjectPage() {
         args: [provider as Address, arbiter as Address, titles, amounts],
         value: total,
       });
-
-      toast({ title: "Project deployed successfully!", variant: "success" });
-      router.push("/dashboard");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Deployment failed";
       toast({ title: "Deployment Failed", description: message.slice(0, 100), variant: "error" });

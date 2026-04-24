@@ -93,3 +93,77 @@ body {
 [data-rk] {
   --rk-colors-accentColor: hsl(var(--primary)) !important;
 }
+
+/* Navigation pending indicator (useLinkStatus) */
+.link-pending {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  visibility: hidden;
+}
+
+.link-pending.is-pending {
+  visibility: visible;
+  animation-name: nav-fade-in, nav-pulse;
+  animation-duration: 200ms, 900ms;
+  animation-delay: 100ms, 100ms;
+  animation-timing-function: ease, ease-in-out;
+  animation-iteration-count: 1, infinite;
+  animation-fill-mode: forwards, none;
+}
+
+@keyframes nav-fade-in {
+  to { opacity: 0.5; }
+}
+@keyframes nav-pulse {
+  50% { opacity: 0.2; }
+}
+
+/* ── Reusable motion primitives ──────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fade-slide-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.35); }
+  70%  { box-shadow: 0 0 0 8px hsl(var(--primary) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+}
+
+.motion-fade-in      { animation: fade-in 250ms ease-out both; }
+.motion-fade-slide   { animation: fade-slide-up 300ms ease-out both; }
+.motion-slide-right  { animation: slide-in-right 300ms ease-out both; }
+.motion-pulse-ring   { animation: pulse-ring 1400ms ease-out infinite; }
+
+/* Stagger helper — apply `data-stagger` on parent, children fade in sequentially */
+[data-stagger] > * {
+  animation: fade-slide-up 300ms ease-out both;
+}
+[data-stagger] > *:nth-child(1) { animation-delay: 0ms; }
+[data-stagger] > *:nth-child(2) { animation-delay: 40ms; }
+[data-stagger] > *:nth-child(3) { animation-delay: 80ms; }
+[data-stagger] > *:nth-child(4) { animation-delay: 120ms; }
+[data-stagger] > *:nth-child(5) { animation-delay: 160ms; }
+[data-stagger] > *:nth-child(6) { animation-delay: 200ms; }
+[data-stagger] > *:nth-child(n+7) { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .motion-fade-in,
+  .motion-fade-slide,
+  .motion-slide-right,
+  .motion-pulse-ring,
+  [data-stagger] > * {
+    animation: none !important;
+  }
+}

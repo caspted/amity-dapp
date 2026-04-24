@@ -345,7 +345,7 @@ export default function ProjectPage({
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-stagger>
             {(milestones ?? []).map((m, idx) => (
               <MilestoneCard
                 key={idx}

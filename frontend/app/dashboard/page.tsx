@@ -194,7 +194,7 @@ function DashboardContent() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2" data-stagger>
             {activeProjects.map((addr) => (
               <ProjectRow key={addr} address={addr as Address} />
             ))}

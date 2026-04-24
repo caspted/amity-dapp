@@ -1,6 +1,12 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import {
+  useReadContract,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { type Address } from "viem";
 import { ESCROW_ABI } from "@/lib/contracts";
 import { toast } from "@/hooks/use-toast";
@@ -23,13 +29,28 @@ export function useMilestones(address: Address | undefined) {
   });
 }
 
+type MilestoneWriteFn =
+  | "markMilestoneComplete"
+  | "approveMilestone"
+  | "requestRevision"
+  | "raiseDispute";
+
 function useMilestoneWrite(
   contractAddress: Address | undefined,
-  functionName: "markMilestoneComplete" | "approveMilestone" | "requestRevision" | "raiseDispute",
+  functionName: MilestoneWriteFn,
   successMsg: string
 ) {
-  const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const queryClient = useQueryClient();
+  const { writeContractAsync, data: hash, isPending, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      queryClient.invalidateQueries();
+      toast({ title: successMsg, variant: "success" });
+      reset();
+    }
+  }, [isSuccess, queryClient, successMsg, reset]);
 
   const execute = async (milestoneIndex: bigint) => {
     if (!contractAddress) return;
@@ -40,10 +61,13 @@ function useMilestoneWrite(
         functionName,
         args: [milestoneIndex],
       });
-      toast({ title: successMsg, variant: "success" });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Transaction failed";
-      toast({ title: "Transaction Failed", description: message.slice(0, 80), variant: "error" });
+      toast({
+        title: "Transaction Failed",
+        description: message.slice(0, 80),
+        variant: "error",
+      });
     }
   };
 
@@ -67,8 +91,17 @@ export function useRaiseDispute(address: Address | undefined) {
 }
 
 export function useWithdrawFunds(address: Address | undefined) {
-  const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
+  const queryClient = useQueryClient();
+  const { writeContractAsync, data: hash, isPending, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  useEffect(() => {
+    if (isSuccess) {
+      queryClient.invalidateQueries();
+      toast({ title: "Funds withdrawn successfully!", variant: "success" });
+      reset();
+    }
+  }, [isSuccess, queryClient, reset]);
 
   const execute = async () => {
     if (!address) return;
@@ -79,10 +112,13 @@ export function useWithdrawFunds(address: Address | undefined) {
         functionName: "withdrawFunds",
         args: [],
       });
-      toast({ title: "Funds withdrawn successfully!", variant: "success" });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Transaction failed";
-      toast({ title: "Withdrawal Failed", description: message.slice(0, 80), variant: "error" });
+      toast({
+        title: "Withdrawal Failed",
+        description: message.slice(0, 80),
+        variant: "error",
+      });
     }
   };
 
