@@ -12,7 +12,6 @@ import {
   AlertTriangle,
   Download,
   Copy,
-  ExternalLink,
 } from "lucide-react";
 import {
   useProjectDetails,

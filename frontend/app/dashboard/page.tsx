@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRole } from "@/hooks/use-role";
 import { useSearchParams } from "next/navigation";
 import { formatAddress, formatEth } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,8 +18,8 @@ import {
   Clock,
   CheckCircle,
 } from "lucide-react";
-import { useReadContract, useChainId } from "wagmi";
-import { ESCROW_ABI, CONTRACT_ADDRESSES, FACTORY_ABI } from "@/lib/contracts";
+import { useReadContract } from "wagmi";
+import { ESCROW_ABI } from "@/lib/contracts";
 import { type Address } from "viem";
 import { PROJECT_STATUS } from "@/lib/utils";
 import { Suspense } from "react";
