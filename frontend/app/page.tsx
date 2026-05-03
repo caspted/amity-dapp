@@ -1,65 +1,97 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useAccount } from "wagmi";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
+import { Shield, Lock, Zap, Users } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Card, CardContent } from "@/components/ui/card";
+import { Toaster } from "@/components/ui/toaster";
+
+const features = [
+  {
+    icon: Lock,
+    title: "Trustless Escrow",
+    description: "100% of project funds locked in a smart contract. No intermediaries, no custody risk.",
+  },
+  {
+    icon: Zap,
+    title: "Milestone Payments",
+    description: "Automated releases tied to specific milestones. Pay for exactly what you receive.",
+  },
+  {
+    icon: Users,
+    title: "Dispute Resolution",
+    description: "A neutral Arbiter role provides decentralized oversight when disagreements arise.",
+  },
+];
+
+export default function LandingPage() {
+  const { isConnected } = useAccount();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isConnected) router.push("/dashboard");
+  }, [isConnected, router]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col min-h-screen bg-background">
+      <header className="border-b border-border px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 font-semibold">
+          <Shield className="h-5 w-5 text-primary" />
+          <span>Amity</span>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <ThemeToggle />
+      </header>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-20 text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1 text-xs text-muted-foreground mb-6">
+          <Shield className="h-3 w-3" />
+          Powered by Ethereum Smart Contracts
+        </div>
+
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight max-w-3xl leading-tight">
+          Freelance agreements,{" "}
+          <span className="text-primary">enforced on-chain</span>
+        </h1>
+
+        <p className="mt-6 text-lg text-muted-foreground max-w-xl leading-relaxed">
+          Amity replaces trust with code. Deploy a milestone-based escrow for any
+          professional agreement — no platform fees, no chargebacks, no disputes left
+          to chance.
+        </p>
+
+        <div className="mt-10">
+          <ConnectButton label="Connect Wallet to Get Started" />
+        </div>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          Connect your wallet to access the dashboard
+        </p>
+
+        <div className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl w-full">
+          {features.map((f) => (
+            <Card key={f.title} className="text-left">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <f.icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <h3 className="font-semibold text-sm">{f.title}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </main>
+
+      <footer className="border-t border-border px-6 py-4 text-center text-xs text-muted-foreground">
+        Amity — Decentralized Milestone Escrow · Built with Next.js &amp; Solidity
+      </footer>
+
+      <Toaster />
     </div>
   );
 }
