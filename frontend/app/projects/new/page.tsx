@@ -2,13 +2,11 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
-import { useQueryClient } from "@tanstack/react-query";
+import { useAccount } from "wagmi";
 import { parseEther, type Address } from "viem";
 import Link from "next/link";
 import { Plus, Trash2, ArrowLeft, AlertCircle } from "lucide-react";
-import { CONTRACT_ADDRESSES, FACTORY_ABI } from "@/lib/contracts";
-import { toast } from "@/hooks/use-toast";
+import { useCreateProject } from "@/hooks/use-factory";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,27 +26,17 @@ function newMilestone(): MilestoneField {
 export default function NewProjectPage() {
   const router = useRouter();
   const { address } = useAccount();
-  const chainId = useChainId();
-  const factoryAddress = CONTRACT_ADDRESSES[chainId]?.factory as Address | undefined;
 
   const [provider, setProvider] = useState("");
   const [arbiter, setArbiter] = useState("");
   const [milestones, setMilestones] = useState<MilestoneField[]>([newMilestone()]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const queryClient = useQueryClient();
-  const { writeContractAsync, data: hash, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
-
-  const isLoading = isPending || isConfirming;
+  const { execute: deployProject, isLoading, isSuccess } = useCreateProject();
 
   useEffect(() => {
-    if (isSuccess) {
-      queryClient.invalidateQueries();
-      toast({ title: "Project deployed successfully!", variant: "success" });
-      router.push("/dashboard");
-    }
-  }, [isSuccess, queryClient, router]);
+    if (isSuccess) router.push("/dashboard");
+  }, [isSuccess, router]);
 
   const totalEth = milestones.reduce((sum, m) => {
     const n = parseFloat(m.amount) || 0;
@@ -89,31 +77,16 @@ export default function NewProjectPage() {
 
   const handleDeploy = async () => {
     if (!validate()) return;
-    if (!factoryAddress || factoryAddress === "0x0000000000000000000000000000000000000000") {
-      toast({
-        title: "Contract Not Deployed",
-        description: "ProjectFactory is not deployed on this network yet.",
-        variant: "error",
-      });
-      return;
-    }
-
-    try {
-      const titles = milestones.map((m) => m.title.trim());
-      const amounts = milestones.map((m) => parseEther(m.amount));
-      const total = amounts.reduce((a, b) => a + b, 0n);
-
-      await writeContractAsync({
-        address: factoryAddress,
-        abi: FACTORY_ABI,
-        functionName: "createProject",
-        args: [provider as Address, arbiter as Address, titles, amounts],
-        value: total,
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Deployment failed";
-      toast({ title: "Deployment Failed", description: message.slice(0, 100), variant: "error" });
-    }
+    const titles = milestones.map((m) => m.title.trim());
+    const amounts = milestones.map((m) => parseEther(m.amount));
+    const total = amounts.reduce((a, b) => a + b, 0n);
+    await deployProject({
+      provider: provider as Address,
+      arbiter: arbiter as Address,
+      milestoneTitles: titles,
+      milestoneAmounts: amounts,
+      totalValue: total,
+    });
   };
 
   return (

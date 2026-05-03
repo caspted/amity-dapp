@@ -9,7 +9,8 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type Address } from "viem";
 import { ESCROW_ABI } from "@/lib/contracts";
-import { toast } from "@/hooks/use-toast";
+import { deriveTxStatus } from "@/lib/tx-status";
+import { useTxToast } from "@/hooks/use-tx-toast";
 
 export function useProjectDetails(address: Address | undefined) {
   return useReadContract({
@@ -41,37 +42,50 @@ function useMilestoneWrite(
   successMsg: string
 ) {
   const queryClient = useQueryClient();
-  const { writeContractAsync, data: hash, isPending, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    reset,
+    error: writeError,
+  } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    isError: isReceiptError,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({ hash });
+
+  const isError = !!writeError || isReceiptError;
+  const error = writeError ?? receiptError ?? null;
+
+  const txState = deriveTxStatus({ isPending, isConfirming, isSuccess, isError, hash });
+  useTxToast({ status: txState.status, hash: txState.hash, error, successMsg });
 
   useEffect(() => {
     if (isSuccess) {
       queryClient.invalidateQueries();
-      toast({ title: successMsg, variant: "success" });
       reset();
     }
-  }, [isSuccess, queryClient, successMsg, reset]);
+  }, [isSuccess, queryClient, reset]);
 
   const execute = async (milestoneIndex: bigint) => {
     if (!contractAddress) return;
-    try {
-      await writeContractAsync({
-        address: contractAddress,
-        abi: ESCROW_ABI,
-        functionName,
-        args: [milestoneIndex],
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Transaction failed";
-      toast({
-        title: "Transaction Failed",
-        description: message.slice(0, 80),
-        variant: "error",
-      });
-    }
+    await writeContractAsync({
+      address: contractAddress,
+      abi: ESCROW_ABI,
+      functionName,
+      args: [milestoneIndex],
+    }).catch(() => {});
   };
 
-  return { execute, isLoading: isPending || isConfirming };
+  return {
+    execute,
+    isLoading: isPending || isConfirming,
+    status: txState.status,
+    hash: txState.hash,
+  };
 }
 
 export function useMarkComplete(address: Address | undefined) {
@@ -92,35 +106,48 @@ export function useRaiseDispute(address: Address | undefined) {
 
 export function useWithdrawFunds(address: Address | undefined) {
   const queryClient = useQueryClient();
-  const { writeContractAsync, data: hash, isPending, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const {
+    writeContractAsync,
+    data: hash,
+    isPending,
+    reset,
+    error: writeError,
+  } = useWriteContract();
+
+  const {
+    isLoading: isConfirming,
+    isSuccess,
+    isError: isReceiptError,
+    error: receiptError,
+  } = useWaitForTransactionReceipt({ hash });
+
+  const isError = !!writeError || isReceiptError;
+  const error = writeError ?? receiptError ?? null;
+
+  const txState = deriveTxStatus({ isPending, isConfirming, isSuccess, isError, hash });
+  useTxToast({ status: txState.status, hash: txState.hash, error, successMsg: "Funds withdrawn successfully!" });
 
   useEffect(() => {
     if (isSuccess) {
       queryClient.invalidateQueries();
-      toast({ title: "Funds withdrawn successfully!", variant: "success" });
       reset();
     }
   }, [isSuccess, queryClient, reset]);
 
   const execute = async () => {
     if (!address) return;
-    try {
-      await writeContractAsync({
-        address,
-        abi: ESCROW_ABI,
-        functionName: "withdrawFunds",
-        args: [],
-      });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Transaction failed";
-      toast({
-        title: "Withdrawal Failed",
-        description: message.slice(0, 80),
-        variant: "error",
-      });
-    }
+    await writeContractAsync({
+      address,
+      abi: ESCROW_ABI,
+      functionName: "withdrawFunds",
+      args: [],
+    }).catch(() => {});
   };
 
-  return { execute, isLoading: isPending || isConfirming };
+  return {
+    execute,
+    isLoading: isPending || isConfirming,
+    status: txState.status,
+    hash: txState.hash,
+  };
 }
