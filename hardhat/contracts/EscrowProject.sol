@@ -50,6 +50,7 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
     event MilestoneSubmitted(uint256 indexed index);
     event MilestoneApproved(uint256 indexed index);
     event RevisionRequested(uint256 indexed index);
+    event MilestoneRetried(uint256 indexed index);
     event DisputeRaised(uint256 indexed index, address indexed raisedBy);
     event DisputeResolved(uint256 indexed index);
     event FundsWithdrawn(uint256 amount);
@@ -157,6 +158,20 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
 
         milestones[_milestoneIndex].status = MilestoneStatus.Rejected;
         emit RevisionRequested(_milestoneIndex);
+    }
+
+    // Provider retries rejected work: Rejected → Pending. Enables workflow loop for revision cycles.
+    function retryMilestone(uint256 _milestoneIndex)
+        external
+        onlyRole(PROVIDER_ROLE)
+    {
+        if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
+        if (milestones[_milestoneIndex].status != MilestoneStatus.Rejected) {
+            revert InvalidMilestoneStatus();
+        }
+
+        milestones[_milestoneIndex].status = MilestoneStatus.Pending;
+        emit MilestoneRetried(_milestoneIndex);
     }
 
     // Either party triggers dispute: freezes funds, prevents approvals/withdrawals. Requires arbiter resolution.
