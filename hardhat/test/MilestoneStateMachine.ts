@@ -19,13 +19,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -65,13 +65,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -112,13 +112,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -164,13 +164,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -178,7 +178,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Try to approve before marking complete
       await expect(
-        escrow.connect(client).approveMilestone(0)
+        escrow.connect(client).approveMilestone(0),
       ).to.be.revertedWithCustomError(escrow, "InvalidMilestoneStatus");
     });
 
@@ -196,13 +196,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -214,7 +214,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Second approval should fail
       await expect(
-        escrow.connect(client).approveMilestone(0)
+        escrow.connect(client).approveMilestone(0),
       ).to.be.revertedWithCustomError(escrow, "InvalidMilestoneStatus");
     });
 
@@ -232,13 +232,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -250,7 +250,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Try to request revision on Approved
       await expect(
-        escrow.connect(client).requestRevision(0)
+        escrow.connect(client).requestRevision(0),
       ).to.be.revertedWithCustomError(escrow, "InvalidMilestoneStatus");
     });
 
@@ -268,13 +268,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -285,7 +285,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Try to mark complete again (now it's Submitted, not Pending)
       await expect(
-        escrow.connect(provider).markMilestoneComplete(0)
+        escrow.connect(provider).markMilestoneComplete(0),
       ).to.be.revertedWithCustomError(escrow, "InvalidMilestoneStatus");
     });
   });
@@ -305,13 +305,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -328,7 +328,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Try to approve Task 2 during dispute (should fail)
       await expect(
-        escrow.connect(client).approveMilestone(1)
+        escrow.connect(client).approveMilestone(1),
       ).to.be.revertedWithCustomError(escrow, "DisputeActive");
     });
 
@@ -346,13 +346,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -367,7 +367,7 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
 
       // Try to withdraw during dispute (should fail)
       await expect(
-        escrow.connect(provider).withdrawFunds()
+        escrow.connect(provider).withdrawFunds(),
       ).to.be.revertedWithCustomError(escrow, "DisputeActive");
     });
   });
@@ -387,13 +387,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -429,13 +429,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -478,13 +478,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
@@ -542,13 +542,13 @@ describe("Task 3: Milestone State Machine & Reentrancy Protection", function () 
         arbiter.address,
         titles,
         amounts,
-        { value: totalAmount }
+        { value: totalAmount },
       );
 
       const receipt = await tx.wait();
       const events = await projectFactory.queryFilter(
         projectFactory.filters.ProjectCreated(),
-        receipt.blockNumber
+        receipt.blockNumber,
       );
       const projectAddress = events[0].args.projectAddress;
       const Escrow = await ethers.getContractFactory("EscrowProject");
