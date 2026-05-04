@@ -34,7 +34,27 @@ function ProjectStatusBadge({ status }: { status: number }) {
   return <Badge variant={variant as "success" | "secondary" | "destructive" | "muted"}>{label}</Badge>;
 }
 
-function ProjectRow({ address }: { address: Address }) {
+function RoleBadge({ role }: { role: "client" | "provider" | "arbiter" }) {
+  if (role === "client") {
+    return <Badge variant="success">Client</Badge>;
+  }
+  if (role === "provider") {
+    return <Badge variant="secondary">Provider</Badge>;
+  }
+  return (
+    <Badge className="border-amber-500/30 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+      Arbiter
+    </Badge>
+  );
+}
+
+function ProjectRow({
+  address,
+  userAddress,
+}: {
+  address: Address;
+  userAddress?: Address;
+}) {
   const { data } = useReadContract({
     address,
     abi: ESCROW_ABI,
@@ -43,8 +63,14 @@ function ProjectRow({ address }: { address: Address }) {
 
   if (!data) return <Skeleton className="h-16 w-full rounded-md" />;
 
-  const [client, provider, , totalAmount, releasedAmount, disputeActive] = data;
+  const [client, provider, arbiter, totalAmount, releasedAmount, disputeActive] = data;
   const projectStatus = deriveProjectStatus(disputeActive, releasedAmount, totalAmount);
+
+  const userRole =
+    userAddress?.toLowerCase() === client.toLowerCase() ? "client" :
+    userAddress?.toLowerCase() === provider.toLowerCase() ? "provider" :
+    userAddress?.toLowerCase() === arbiter.toLowerCase() ? "arbiter" :
+    null;
 
   return (
     <Link
@@ -59,11 +85,12 @@ function ProjectRow({ address }: { address: Address }) {
           <span>Provider: {formatAddress(provider)}</span>
         </div>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         <div className="text-right hidden sm:block">
           <p className="text-sm font-medium">{formatEth(totalAmount)}</p>
           <p className="text-xs text-muted-foreground">{formatEth(releasedAmount)} released</p>
         </div>
+        {userRole && <RoleBadge role={userRole} />}
         <ProjectStatusBadge status={projectStatus} />
         <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
       </div>
@@ -99,12 +126,33 @@ function StatsCard({
 
 function DashboardContent() {
   const { address } = useAccount();
-  const { role, isLoading, clientProjects, providerProjects } = useRole();
+  const {
+    role,
+    isClient,
+    isProvider,
+    isArbiter,
+    isLoading,
+    clientProjects,
+    providerProjects,
+    arbiterProjects,
+  } = useRole();
   const searchParams = useSearchParams();
-  const view = searchParams.get("role") ?? (role === "provider" ? "provider" : "client");
+
+  const defaultView =
+    role === "provider" && !isClient ? "provider" :
+    isArbiter && !isClient && !isProvider ? "arbiter" :
+    "client";
+  const view = searchParams.get("view") ?? defaultView;
 
   const activeProjects =
-    view === "provider" ? providerProjects : clientProjects;
+    view === "provider" ? providerProjects :
+    view === "arbiter" ? arbiterProjects :
+    clientProjects;
+
+  const roleLabel =
+    [isClient && "Client", isProvider && "Provider", isArbiter && "Arbiter"]
+      .filter(Boolean)
+      .join(" · ") || "New User";
 
   if (isLoading) {
     return (
@@ -126,43 +174,60 @@ function DashboardContent() {
             Welcome back, <span className="font-mono">{formatAddress(address)}</span>
           </p>
         </div>
-        {(role === "client" || role === "both" || role === "none") && (
-          <Button asChild>
-            <Link href="/projects/new">
-              <FolderPlus className="h-4 w-4" />
-              New Project
-            </Link>
-          </Button>
-        )}
+        <Button asChild>
+          <Link href="/projects/new">
+            <FolderPlus className="h-4 w-4" />
+            New Project
+          </Link>
+        </Button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatsCard icon={Briefcase} label="Total Projects" value={activeProjects.length} />
-        <StatsCard icon={TrendingUp} label="Your Role" value={role === "none" ? "New User" : role} />
+        <StatsCard icon={TrendingUp} label="Your Role" value={roleLabel} />
         <StatsCard icon={Clock} label="Active" value={activeProjects.length} />
         <StatsCard icon={CheckCircle} label="Network" value="Sepolia" />
       </div>
 
       <Separator />
 
-      {/* Role toggle tabs */}
-      {role === "both" && (
-        <div className="flex gap-2">
-          <Button
-            variant={view === "client" ? "default" : "outline"}
-            size="sm"
-            asChild
-          >
-            <Link href="/dashboard?role=client">As Client</Link>
-          </Button>
-          <Button
-            variant={view === "provider" ? "default" : "outline"}
-            size="sm"
-            asChild
-          >
-            <Link href="/dashboard?role=provider">As Provider</Link>
-          </Button>
+      {/* Role tab switcher */}
+      {(isClient || isProvider || isArbiter) && (
+        <div className="flex gap-2 flex-wrap">
+          {isClient && (
+            <Button
+              variant={view === "client" ? "default" : "outline"}
+              size="sm"
+              asChild
+            >
+              <Link href="/dashboard?view=client">
+                Client ({clientProjects.length})
+              </Link>
+            </Button>
+          )}
+          {isProvider && (
+            <Button
+              variant={view === "provider" ? "default" : "outline"}
+              size="sm"
+              asChild
+            >
+              <Link href="/dashboard?view=provider">
+                Provider ({providerProjects.length})
+              </Link>
+            </Button>
+          )}
+          {isArbiter && (
+            <Button
+              variant={view === "arbiter" ? "default" : "outline"}
+              size="sm"
+              asChild
+            >
+              <Link href="/dashboard?view=arbiter">
+                Arbiter ({arbiterProjects.length})
+              </Link>
+            </Button>
+          )}
         </div>
       )}
 
@@ -170,7 +235,11 @@ function DashboardContent() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold">
-            {view === "provider" ? "Contracts (as Provider)" : "Projects (as Client)"}
+            {view === "provider"
+              ? "Contracts (as Provider)"
+              : view === "arbiter"
+              ? "Projects (as Arbiter)"
+              : "Projects (as Client)"}
           </h2>
           <span className="text-sm text-muted-foreground">{activeProjects.length} total</span>
         </div>
@@ -183,11 +252,13 @@ function DashboardContent() {
               </div>
               <CardTitle className="text-base mb-2">No projects yet</CardTitle>
               <CardDescription className="max-w-xs mb-4">
-                {view === "client"
-                  ? "Create your first milestone-based escrow to get started."
-                  : "You haven't been assigned as a service provider on any project yet."}
+                {view === "arbiter"
+                  ? "You haven't been assigned as arbiter on any project yet."
+                  : view === "provider"
+                  ? "You haven't been assigned as a service provider on any project yet."
+                  : "Create your first milestone-based escrow to get started."}
               </CardDescription>
-              {view === "client" && (
+              {view !== "arbiter" && view !== "provider" && (
                 <Button asChild>
                   <Link href="/projects/new">Create Project</Link>
                 </Button>
@@ -197,7 +268,7 @@ function DashboardContent() {
         ) : (
           <div className="space-y-2" data-stagger>
             {activeProjects.map((addr) => (
-              <ProjectRow key={addr} address={addr as Address} />
+              <ProjectRow key={addr} address={addr as Address} userAddress={address} />
             ))}
           </div>
         )}

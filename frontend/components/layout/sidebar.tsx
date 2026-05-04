@@ -11,6 +11,7 @@ import {
   FolderPlus,
   Briefcase,
   HardHat,
+  Scale,
   Wallet,
   ChevronRight,
 } from "lucide-react";
@@ -22,29 +23,28 @@ interface SidebarLink {
   icon: React.ElementType;
 }
 
-function getLinks(role: UserRole): SidebarLink[] {
-  const dashboard: SidebarLink = { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard };
-  const create: SidebarLink = { href: "/projects/new", label: "Create Project", icon: FolderPlus };
+function getLinks(role: UserRole, isArbiter: boolean): SidebarLink[] {
+  const links: SidebarLink[] = [
+    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/projects/new", label: "Create Project", icon: FolderPlus },
+  ];
 
-  if (role === "both") {
-    return [
-      dashboard,
-      create,
-      { href: "/dashboard?role=client", label: "My Projects", icon: Briefcase },
-      { href: "/dashboard?role=provider", label: "My Contracts", icon: HardHat },
-    ];
+  if (role === "client" || role === "both") {
+    links.push({ href: "/dashboard?view=client", label: "My Projects", icon: Briefcase });
+  }
+  if (role === "provider" || role === "both") {
+    links.push({ href: "/dashboard?view=provider", label: "My Contracts", icon: HardHat });
+  }
+  if (isArbiter) {
+    links.push({ href: "/dashboard?view=arbiter", label: "Arbiter Panel", icon: Scale });
   }
 
-  if (role === "provider") {
-    return [dashboard];
-  }
-
-  // client or none — a "none" user is effectively a potential client
-  return [dashboard, create];
+  return links;
 }
 
 interface SidebarProps {
   role: UserRole;
+  isArbiter?: boolean;
 }
 
 function LinkPendingIndicator() {
@@ -88,16 +88,16 @@ function NavItem({
   );
 }
 
-function SidebarNav({ role }: SidebarProps) {
+function SidebarNav({ role, isArbiter = false }: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const links = getLinks(role);
+  const links = getLinks(role, isArbiter);
 
   function isActive(href: string) {
     const [path, qs] = href.split("?");
     if (pathname !== path) return false;
     if (!qs) {
-      return !searchParams.get("role");
+      return !searchParams.get("view");
     }
     const params = new URLSearchParams(qs);
     for (const [key, val] of params.entries()) {
@@ -121,9 +121,9 @@ function SidebarNav({ role }: SidebarProps) {
   );
 }
 
-export function Sidebar({ role }: SidebarProps) {
+export function Sidebar({ role, isArbiter = false }: SidebarProps) {
   const { address } = useAccount();
-  const fallbackLinks = getLinks(role);
+  const fallbackLinks = getLinks(role, isArbiter);
 
   return (
     <aside className="flex h-full w-(--sidebar-width) flex-col border-r border-border bg-card px-3 py-4">
@@ -142,7 +142,7 @@ export function Sidebar({ role }: SidebarProps) {
           </nav>
         }
       >
-        <SidebarNav role={role} />
+        <SidebarNav role={role} isArbiter={isArbiter} />
       </Suspense>
 
       {address && (

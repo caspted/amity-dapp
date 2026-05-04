@@ -16,11 +16,12 @@ import { Separator } from "@/components/ui/separator";
 interface MilestoneField {
   id: string;
   title: string;
+  description: string;
   amount: string;
 }
 
 function newMilestone(): MilestoneField {
-  return { id: Math.random().toString(36).slice(2), title: "", amount: "" };
+  return { id: Math.random().toString(36).slice(2), title: "", description: "", amount: "" };
 }
 
 export default function NewProjectPage() {
@@ -48,7 +49,7 @@ export default function NewProjectPage() {
   const removeMilestone = (id: string) =>
     setMilestones((prev) => prev.filter((m) => m.id !== id));
 
-  const updateMilestone = (id: string, field: "title" | "amount", value: string) => {
+  const updateMilestone = (id: string, field: "title" | "description" | "amount", value: string) => {
     setMilestones((prev) =>
       prev.map((m) => (m.id === id ? { ...m, [field]: value } : m))
     );
@@ -77,7 +78,10 @@ export default function NewProjectPage() {
 
   const handleDeploy = async () => {
     if (!validate()) return;
-    const titles = milestones.map((m) => m.title.trim());
+    const titles = milestones.map((m) => {
+      const desc = m.description.trim();
+      return desc ? `${m.title.trim()}\n${desc}` : m.title.trim();
+    });
     const amounts = milestones.map((m) => parseEther(m.amount));
     const total = amounts.reduce((a, b) => a + b, 0n);
     await deployProject({
@@ -178,7 +182,7 @@ export default function NewProjectPage() {
                   <span className="text-xs font-semibold text-muted-foreground w-6">
                     #{idx + 1}
                   </span>
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-1.5">
                     <Input
                       placeholder="Milestone title"
                       value={m.title}
@@ -186,8 +190,15 @@ export default function NewProjectPage() {
                       className={`h-8 text-sm ${errors[`${m.id}_title`] ? "border-destructive" : ""}`}
                     />
                     {errors[`${m.id}_title`] && (
-                      <p className="text-xs text-destructive mt-1">{errors[`${m.id}_title`]}</p>
+                      <p className="text-xs text-destructive">{errors[`${m.id}_title`]}</p>
                     )}
+                    <textarea
+                      rows={2}
+                      placeholder="Description (optional)"
+                      value={m.description}
+                      onChange={(e) => updateMilestone(m.id, "description", e.target.value)}
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                    />
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-8">
