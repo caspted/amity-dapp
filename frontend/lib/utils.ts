@@ -38,3 +38,14 @@ export const PROJECT_STATUS = {
 
 export type MilestoneStatusKey = keyof typeof MILESTONE_STATUS;
 export type ProjectStatusKey = keyof typeof PROJECT_STATUS;
+
+// Contract only exposes `disputeActive` (bool); other states are inferred from financials.
+export function deriveProjectStatus(
+  disputeActive: boolean,
+  releasedAmount: bigint,
+  totalAmount: bigint
+): 0 | 1 | 2 {
+  if (disputeActive) return 1;
+  if (totalAmount > 0n && releasedAmount >= totalAmount) return 2;
+  return 0;
+}

@@ -6,8 +6,6 @@ export const MILESTONE_FIELDS = gql`
   fragment MilestoneFields on Milestone {
     id
     index
-    title
-    amount
     status
     updatedAt
   }
@@ -17,8 +15,9 @@ export const MILESTONE_FIELDS = gql`
 
 /**
  * All escrow projects where the given address is client or provider.
- * Replaces the dual useReadContract calls in use-role.ts for list views.
- * Activated automatically when NEXT_PUBLIC_SUBGRAPH_URL is set (Dev 2's deliverable).
+ * Mirrors the fields actually emitted by the subgraph schema (disputeActive,
+ * disputeDeadline, createdAtTimestamp). Milestone titles/amounts are not
+ * indexed — read those on-chain via useMilestones.
  */
 export const PROJECTS_BY_USER = gql`
   query ProjectsByUser($address: Bytes!) {
@@ -29,8 +28,9 @@ export const PROJECTS_BY_USER = gql`
       arbiter
       totalAmount
       releasedAmount
-      status
-      createdAt
+      disputeActive
+      disputeDeadline
+      createdAtTimestamp
     }
     asProvider: projects(where: { provider: $address }) {
       id
@@ -39,16 +39,15 @@ export const PROJECTS_BY_USER = gql`
       arbiter
       totalAmount
       releasedAmount
-      status
-      createdAt
+      disputeActive
+      disputeDeadline
+      createdAtTimestamp
     }
   }
 `;
 
 /**
- * Single project with all milestones.
- * Provides instant seed data for the project detail page before the
- * on-chain read resolves.
+ * Single project with all milestones (status only — titles/amounts come from chain).
  */
 export const PROJECT_FULL = gql`
   ${MILESTONE_FIELDS}
@@ -60,8 +59,9 @@ export const PROJECT_FULL = gql`
       arbiter
       totalAmount
       releasedAmount
-      status
-      createdAt
+      disputeActive
+      disputeDeadline
+      createdAtTimestamp
       milestones {
         ...MilestoneFields
       }
@@ -70,27 +70,37 @@ export const PROJECT_FULL = gql`
 `;
 
 /**
- * Recent activity feed for the dashboard.
- * Derived from contract events indexed by Dev 2's subgraph mappings
- * (ProjectCreated, MilestoneApproved, MilestoneSubmitted, DisputeRaised, etc.)
+ * Recent dispute lifecycle events (raised, resolved, timeout-refund) involving
+ * the given user (as raiser, client recipient, or provider recipient).
  */
-export const RECENT_ACTIVITY = gql`
-  query RecentActivity($user: Bytes!, $limit: Int!) {
-    activities(
-      where: { actor: $user }
-      orderBy: blockTimestamp
+export const RECENT_DISPUTES = gql`
+  query RecentDisputes($user: Bytes!, $limit: Int!) {
+    disputeEvents(
+      where: {
+        or: [
+          { raisedBy: $user }
+          { clientRecipient: $user }
+          { providerRecipient: $user }
+        ]
+      }
+      orderBy: timestamp
       orderDirection: desc
       first: $limit
     ) {
       id
-      type
       project {
         id
       }
       milestoneIndex
-      actor
+      eventType
+      raisedBy
+      clientRecipient
+      clientAmount
+      providerRecipient
+      providerAmount
+      refundAmount
+      timestamp
       txHash
-      blockTimestamp
     }
   }
 `;

@@ -1,10 +1,11 @@
-import { type Address } from "viem";
+import { type Address, zeroAddress } from "viem";
 
-// ─── Contract Addresses ────────────────────────────────────────────────────────
-// Replace with deployed addresses after running `hardhat deploy`
+const SEPOLIA_FACTORY = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS_SEPOLIA ?? zeroAddress) as Address;
+const LOCAL_FACTORY = (process.env.NEXT_PUBLIC_FACTORY_ADDRESS_LOCAL ?? zeroAddress) as Address;
+
 export const CONTRACT_ADDRESSES: Record<number, { factory: Address }> = {
-  31337: { factory: "0x0000000000000000000000000000000000000000" }, // Hardhat local
-  11155111: { factory: "0x0000000000000000000000000000000000000000" }, // Sepolia
+  31337: { factory: LOCAL_FACTORY },
+  11155111: { factory: SEPOLIA_FACTORY },
 };
 
 // ─── ProjectFactory ABI ────────────────────────────────────────────────────────
@@ -60,7 +61,7 @@ export const ESCROW_ABI = [
       { name: "arbiter", type: "address" },
       { name: "totalAmount", type: "uint256" },
       { name: "releasedAmount", type: "uint256" },
-      { name: "projectStatus", type: "uint8" },
+      { name: "disputeActive", type: "bool" },
     ],
   },
   {
@@ -221,5 +222,5 @@ export type ProjectDetails = {
   arbiter: Address;
   totalAmount: bigint;
   releasedAmount: bigint;
-  projectStatus: number;
+  disputeActive: boolean;
 };
