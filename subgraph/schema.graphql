@@ -1,0 +1,122 @@
+# ─── Amity Subgraph – GraphQL Schema ─────────────────────────────────────────
+# Indexes all EscrowProject and ProjectFactory events for instant frontend queries.
+
+"""
+A project created through the ProjectFactory.
+Tracks participants, milestones, financial state, and dispute status.
+"""
+type Project @entity {
+  "Address of the deployed EscrowProject contract"
+  id: ID!
+  "Client (funds owner) address"
+  client: Bytes!
+  "Provider (contractor) address"
+  provider: Bytes!
+  "Arbiter (dispute resolver) address — set via factory, not yet populated from escrow events"
+  arbiter: Bytes
+  "Total ETH locked at project creation"
+  totalAmount: BigInt!
+  "Cumulative ETH released to provider or refunded"
+  releasedAmount: BigInt!
+  "Whether a dispute is currently active"
+  disputeActive: Boolean!
+  "Timestamp of dispute resolution deadline (0 if no dispute)"
+  disputeDeadline: BigInt!
+  "Block number when project was created"
+  createdAtBlock: BigInt!
+  "Timestamp when project was created"
+  createdAtTimestamp: BigInt!
+  "Transaction hash of project creation"
+  txHash: Bytes!
+  "Milestones belonging to this project"
+  milestones: [Milestone!]! @derivedFrom(field: "project")
+  "All dispute events for this project"
+  disputes: [DisputeEvent!]! @derivedFrom(field: "project")
+  "All evidence submissions for this project"
+  evidences: [EvidenceSubmission!]! @derivedFrom(field: "project")
+}
+
+"""
+Individual milestone within a project.
+Status enum: 0=Pending, 1=Submitted, 2=Approved, 3=Rejected, 4=Disputed, 5=Released
+"""
+type Milestone @entity {
+  "Composite ID: projectAddress-milestoneIndex"
+  id: ID!
+  "Parent project"
+  project: Project!
+  "Index within the project milestones array"
+  index: BigInt!
+  "Current status (mirrors on-chain enum)"
+  status: Int!
+  "Timestamp of last status change"
+  updatedAt: BigInt!
+}
+
+"""
+Tracks dispute lifecycle events (raised, resolved, timed out).
+"""
+type DisputeEvent @entity {
+  "Unique ID: txHash-logIndex"
+  id: ID!
+  "Parent project"
+  project: Project!
+  "Milestone index involved"
+  milestoneIndex: BigInt!
+  "Type: RAISED | RESOLVED | TIMEOUT_REFUND"
+  eventType: String!
+  "Address that raised the dispute (for RAISED events)"
+  raisedBy: Bytes
+  "Deadline timestamp (for RAISED events)"
+  deadline: BigInt
+  "Client recipient address (for RESOLVED events)"
+  clientRecipient: Bytes
+  "Client amount (for RESOLVED events)"
+  clientAmount: BigInt
+  "Provider recipient address (for RESOLVED events)"
+  providerRecipient: Bytes
+  "Provider amount (for RESOLVED events)"
+  providerAmount: BigInt
+  "Refund amount (for TIMEOUT_REFUND events)"
+  refundAmount: BigInt
+  "Block timestamp"
+  timestamp: BigInt!
+  "Transaction hash"
+  txHash: Bytes!
+}
+
+"""
+Evidence submitted during a dispute.
+"""
+type EvidenceSubmission @entity {
+  "Unique ID: txHash-logIndex"
+  id: ID!
+  "Parent project"
+  project: Project!
+  "Milestone index"
+  milestoneIndex: BigInt!
+  "Address of submitter"
+  submittedBy: Bytes!
+  "IPFS URI or evidence link"
+  evidenceURI: String!
+  "Block timestamp"
+  timestamp: BigInt!
+  "Transaction hash"
+  txHash: Bytes!
+}
+
+"""
+Funds withdrawal event.
+"""
+type Withdrawal @entity {
+  "Unique ID: txHash-logIndex"
+  id: ID!
+  "Parent project"
+  project: Project!
+  "Amount withdrawn"
+  amount: BigInt!
+  "Block timestamp"
+  timestamp: BigInt!
+  "Transaction hash"
+  txHash: Bytes!
+}

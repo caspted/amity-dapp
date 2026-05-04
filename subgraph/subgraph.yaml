@@ -1,0 +1,78 @@
+# ─── Amity Subgraph Manifest ─────────────────────────────────────────────────
+# Defines data sources (ProjectFactory + dynamic EscrowProject templates)
+# for indexing all contract events.
+#
+# IMPORTANT: Replace the `address` and `startBlock` values below with your
+# actual deployed ProjectFactory address and deployment block number.
+
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+
+dataSources:
+  - kind: ethereum
+    name: ProjectFactory
+    network: sepolia
+    source:
+      address: "0x35255dB702fE5cA1Cad3AdbF24Fd5E0C825d0096"  # TODO: Replace with deployed address
+      abi: ProjectFactory
+      startBlock: 0  # TODO: Replace with deployment block
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Project
+      abis:
+        - name: ProjectFactory
+          file: ./abis/ProjectFactory.json
+        - name: EscrowProject
+          file: ./abis/EscrowProject.json
+      eventHandlers:
+        - event: ProjectCreated(indexed address,indexed address,indexed address,uint256)
+          handler: handleProjectCreated
+      file: ./src/factory.ts
+
+templates:
+  - kind: ethereum
+    name: EscrowProject
+    network: sepolia
+    source:
+      abi: EscrowProject
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Project
+        - Milestone
+        - DisputeEvent
+        - EvidenceSubmission
+        - Withdrawal
+      abis:
+        - name: EscrowProject
+          file: ./abis/EscrowProject.json
+      eventHandlers:
+        - event: DepositReceived(uint256)
+          handler: handleDepositReceived
+        - event: MilestoneSubmitted(indexed uint256)
+          handler: handleMilestoneSubmitted
+        - event: MilestoneApproved(indexed uint256)
+          handler: handleMilestoneApproved
+        - event: RevisionRequested(indexed uint256)
+          handler: handleRevisionRequested
+        - event: MilestoneRetried(indexed uint256)
+          handler: handleMilestoneRetried
+        - event: DisputeRaised(indexed uint256,indexed address,uint256)
+          handler: handleDisputeRaised
+        - event: DisputeResolved(indexed uint256,address,uint256,address,uint256)
+          handler: handleDisputeResolved
+        - event: DisputeDeadlineRefund(indexed uint256,uint256)
+          handler: handleDisputeDeadlineRefund
+        - event: EvidenceSubmitted(indexed uint256,indexed address,string)
+          handler: handleEvidenceSubmitted
+        - event: FundsWithdrawn(uint256)
+          handler: handleFundsWithdrawn
+      file: ./src/escrow.ts
