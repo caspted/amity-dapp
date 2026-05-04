@@ -109,6 +109,41 @@ export const ESCROW_ABI = [
     outputs: [],
   },
   {
+    name: "submitEvidence",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "milestoneIndex", type: "uint256" },
+      { name: "evidenceURI", type: "string" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "resolveDisputeWithSplit",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "milestoneIndex", type: "uint256" },
+      { name: "clientAmount", type: "uint256" },
+      { name: "providerAmount", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    name: "claimDisputeTimeout",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "milestoneIndex", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    name: "disputeDeadline",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
     name: "withdrawFunds",
     type: "function",
     stateMutability: "nonpayable",
@@ -136,6 +171,35 @@ export const ESCROW_ABI = [
     inputs: [
       { name: "milestoneIndex", type: "uint256", indexed: true },
       { name: "raisedBy", type: "address", indexed: true },
+      { name: "deadline", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "DisputeResolved",
+    type: "event",
+    inputs: [
+      { name: "index", type: "uint256", indexed: true },
+      { name: "clientRecipient", type: "address", indexed: false },
+      { name: "clientAmount", type: "uint256", indexed: false },
+      { name: "providerRecipient", type: "address", indexed: false },
+      { name: "providerAmount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "DisputeDeadlineRefund",
+    type: "event",
+    inputs: [
+      { name: "index", type: "uint256", indexed: true },
+      { name: "refundedAmount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    name: "EvidenceSubmitted",
+    type: "event",
+    inputs: [
+      { name: "index", type: "uint256", indexed: true },
+      { name: "submittedBy", type: "address", indexed: true },
+      { name: "evidenceURI", type: "string", indexed: false },
     ],
   },
   {
