@@ -1,15 +1,18 @@
+
 # Amity dApp
 
 Amity is a decentralized escrow platform designed to facilitate secure, milestone-based agreements between clients and service providers (freelancers). It ensures trust and accountability by locking funds in a smart contract and releasing them only upon the successful completion and approval of predefined milestones. In the event of a disagreement, a designated neutral Arbiter can resolve disputes.
 
 ## 📸 Screenshot
+<img width="1018" height="845" alt="Screenshot 2026-05-04 at 11 20 58 PM" src="https://github.com/user-attachments/assets/d1d47811-efa0-46e1-9ebe-c52d291dcdc5" />
 
-![Amity App Screenshot](screenshot-placeholder.png)
 
 ## 👥 Group Members & Roles
 
-- **[Member Name Placeholder]** - [Role Placeholder]
-- **[Member Name Placeholder]** - [Role Placeholder]
+- **Teddie John Rajeev** - Full Stack Developer with Contract Creation & Off Chain Database Deployment.
+- **Zyd Mallorca** - Full Stack Developer with Web3 Wallet Integration & Arbiter logic Implementation.
+- **Manaf Kassim** - Backend Developer with Contract Creation.
+- **Jeff Andre Millan** - Frontend Developer with Role-Based Implementation.
 
 ## 🌟 Key Features
 
@@ -105,7 +108,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to interact 
 
 The smart contracts are currently configured for deployment on the **Ethereum Sepolia Testnet**. The frontend application connects to MetaMask and interacts with the deployed contract.
 
-- **Live Frontend URL**: [Deployed Site URL Placeholder]
+- **Live Frontend URL**: amity-dapp.vercel.app
 - **ProjectFactory Address**: `0x35255dB702fE5cA1Cad3AdbF24Fd5E0C825d0096` (Sepolia)
 - **Subgraph Endpoint**: Hosted on The Graph Studio (`amity-subgraph`)
 
@@ -121,9 +124,7 @@ The smart contracts are currently configured for deployment on the **Ethereum Se
 
 ## 📚 Credits & References
 
-- [Tutorials/Docs used Placeholder]
-- [AI tools used Placeholder]
-- [Other references]
+- Claude Code & Antigravity Editor
 
 ## 📄 License
 
