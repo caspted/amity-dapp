@@ -28,7 +28,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 
-import { formatAddress, formatEth, MILESTONE_STATUS, PROJECT_STATUS } from "@/lib/utils";
+import {
+  formatAddress,
+  formatEth,
+  MILESTONE_STATUS,
+  PROJECT_STATUS,
+  deriveProjectStatus,
+} from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
@@ -237,7 +243,8 @@ export default function ProjectPage({
     );
   }
 
-  const [client, provider, arbiter, totalAmount, releasedAmount, projectStatus] = details;
+  const [client, provider, arbiter, totalAmount, releasedAmount, disputeActive] = details;
+  const projectStatus = deriveProjectStatus(disputeActive, releasedAmount, totalAmount);
 
   const isClient = userAddress?.toLowerCase() === client.toLowerCase();
   const isProvider = userAddress?.toLowerCase() === provider.toLowerCase();

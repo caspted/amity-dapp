@@ -3,7 +3,7 @@
 import { useQuery } from "@apollo/client/react";
 import { useAccount } from "wagmi";
 import { useRole } from "@/hooks/use-role";
-import { PROJECTS_BY_USER, RECENT_ACTIVITY } from "@/lib/queries";
+import { PROJECTS_BY_USER, RECENT_DISPUTES } from "@/lib/queries";
 import { isSubgraphConfigured } from "@/lib/apollo";
 
 // ─── Types matching the subgraph schema ───────────────────────────────────────
@@ -15,18 +15,24 @@ export interface SubgraphProject {
   arbiter: string;
   totalAmount: string;
   releasedAmount: string;
-  status: number;
-  createdAt: string;
+  disputeActive: boolean;
+  disputeDeadline: string;
+  createdAtTimestamp: string;
 }
 
-export interface SubgraphActivity {
+export interface SubgraphDisputeEvent {
   id: string;
-  type: string;
   project: { id: string };
-  milestoneIndex: number | null;
-  actor: string;
+  milestoneIndex: string;
+  eventType: "RAISED" | "RESOLVED" | "TIMEOUT_REFUND";
+  raisedBy: string | null;
+  clientRecipient: string | null;
+  clientAmount: string | null;
+  providerRecipient: string | null;
+  providerAmount: string | null;
+  refundAmount: string | null;
+  timestamp: string;
   txHash: string;
-  blockTimestamp: string;
 }
 
 // ─── Project list hook (subgraph → on-chain fallback) ─────────────────────────
@@ -48,7 +54,7 @@ export function useProjectsFeed() {
     }
   );
 
-  // On-chain fallback — used when subgraph isn't configured yet (before Dev 2 delivers)
+  // On-chain fallback — used when subgraph isn't configured yet
   const onChain = useRole();
 
   const usingSubgraph = isSubgraphConfigured && !graphError && !!graphData;
@@ -72,13 +78,13 @@ export function useProjectsFeed() {
   };
 }
 
-// ─── Activity feed hook (subgraph only — no on-chain equivalent) ──────────────
+// ─── Dispute activity feed (subgraph only — no on-chain equivalent) ───────────
 
-export function useActivityFeed(limit = 20) {
+export function useDisputeFeed(limit = 20) {
   const { address } = useAccount();
 
-  const { data, loading, error } = useQuery<{ activities: SubgraphActivity[] }>(
-    RECENT_ACTIVITY,
+  const { data, loading, error } = useQuery<{ disputeEvents: SubgraphDisputeEvent[] }>(
+    RECENT_DISPUTES,
     {
       variables: { user: address?.toLowerCase() ?? "", limit },
       skip: !address || !isSubgraphConfigured,
@@ -87,7 +93,7 @@ export function useActivityFeed(limit = 20) {
   );
 
   return {
-    activities: (data?.activities ?? []) as SubgraphActivity[],
+    disputes: (data?.disputeEvents ?? []) as SubgraphDisputeEvent[],
     isLoading: loading,
     isAvailable: isSubgraphConfigured && !error,
   };

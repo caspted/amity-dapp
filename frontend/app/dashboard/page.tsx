@@ -4,7 +4,7 @@ import { useAccount } from "wagmi";
 import Link from "next/link";
 import { useRole } from "@/hooks/use-role";
 import { useSearchParams } from "next/navigation";
-import { formatAddress, formatEth } from "@/lib/utils";
+import { formatAddress, formatEth, deriveProjectStatus } from "@/lib/utils";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,8 @@ function ProjectRow({ address }: { address: Address }) {
 
   if (!data) return <Skeleton className="h-16 w-full rounded-md" />;
 
-  const [client, provider, , totalAmount, releasedAmount, projectStatus] = data;
+  const [client, provider, , totalAmount, releasedAmount, disputeActive] = data;
+  const projectStatus = deriveProjectStatus(disputeActive, releasedAmount, totalAmount);
 
   return (
     <Link
