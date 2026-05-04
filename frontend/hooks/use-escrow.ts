@@ -34,7 +34,8 @@ type MilestoneWriteFn =
   | "markMilestoneComplete"
   | "approveMilestone"
   | "requestRevision"
-  | "raiseDispute";
+  | "raiseDispute"
+  | "claimDisputeTimeout";
 
 function useMilestoneWrite(
   contractAddress: Address | undefined,
@@ -102,6 +103,75 @@ export function useRequestRevision(address: Address | undefined) {
 
 export function useRaiseDispute(address: Address | undefined) {
   return useMilestoneWrite(address, "raiseDispute", "Dispute raised — arbiter notified.");
+}
+
+export function useClaimDisputeTimeout(address: Address | undefined) {
+  return useMilestoneWrite(address, "claimDisputeTimeout", "Timeout claimed — funds refunded to client!");
+}
+
+export function useDisputeDeadline(address: Address | undefined) {
+  return useReadContract({
+    address,
+    abi: ESCROW_ABI,
+    functionName: "disputeDeadline",
+    query: { enabled: !!address },
+  });
+}
+
+export function useResolveDisputeWithSplit(address: Address | undefined) {
+  const queryClient = useQueryClient();
+  const { writeContractAsync, data: hash, isPending, reset, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError: isReceiptError, error: receiptError } =
+    useWaitForTransactionReceipt({ hash });
+
+  const isError = !!writeError || isReceiptError;
+  const error = writeError ?? receiptError ?? null;
+  const txState = deriveTxStatus({ isPending, isConfirming, isSuccess, isError, hash });
+  useTxToast({ status: txState.status, hash: txState.hash, error, successMsg: "Dispute resolved — funds distributed!" });
+
+  useEffect(() => {
+    if (isSuccess) { queryClient.invalidateQueries(); reset(); }
+  }, [isSuccess, queryClient, reset]);
+
+  const execute = async (milestoneIndex: bigint, clientAmount: bigint, providerAmount: bigint) => {
+    if (!address) return;
+    await writeContractAsync({
+      address,
+      abi: ESCROW_ABI,
+      functionName: "resolveDisputeWithSplit",
+      args: [milestoneIndex, clientAmount, providerAmount],
+    }).catch(() => {});
+  };
+
+  return { execute, isLoading: isPending || isConfirming };
+}
+
+export function useSubmitEvidence(address: Address | undefined) {
+  const queryClient = useQueryClient();
+  const { writeContractAsync, data: hash, isPending, reset, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess, isError: isReceiptError, error: receiptError } =
+    useWaitForTransactionReceipt({ hash });
+
+  const isError = !!writeError || isReceiptError;
+  const error = writeError ?? receiptError ?? null;
+  const txState = deriveTxStatus({ isPending, isConfirming, isSuccess, isError, hash });
+  useTxToast({ status: txState.status, hash: txState.hash, error, successMsg: "Evidence submitted." });
+
+  useEffect(() => {
+    if (isSuccess) { queryClient.invalidateQueries(); reset(); }
+  }, [isSuccess, queryClient, reset]);
+
+  const execute = async (milestoneIndex: bigint, evidenceURI: string) => {
+    if (!address) return;
+    await writeContractAsync({
+      address,
+      abi: ESCROW_ABI,
+      functionName: "submitEvidence",
+      args: [milestoneIndex, evidenceURI],
+    }).catch(() => {});
+  };
+
+  return { execute, isLoading: isPending || isConfirming };
 }
 
 export function useWithdrawFunds(address: Address | undefined) {

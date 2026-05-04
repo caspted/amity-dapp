@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState } from "react";
 import { useAccount } from "wagmi";
 import { type Address } from "viem";
 import Link from "next/link";
@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   Download,
   Copy,
+  Scale,
+  FileText,
 } from "lucide-react";
 import {
   useProjectDetails,
@@ -21,12 +23,18 @@ import {
   useRequestRevision,
   useRaiseDispute,
   useWithdrawFunds,
+  useResolveDisputeWithSplit,
+  useSubmitEvidence,
+  useClaimDisputeTimeout,
+  useDisputeDeadline,
 } from "@/hooks/use-escrow";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { parseEther } from "viem";
 
 import {
   formatAddress,
@@ -36,6 +44,7 @@ import {
   deriveProjectStatus,
 } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
+import { getProjectTitle } from "@/lib/project-titles";
 
 // ─── Status helpers ────────────────────────────────────────────────────────────
 
@@ -68,6 +77,7 @@ interface MilestoneCardProps {
   status: number;
   isClient: boolean;
   isProvider: boolean;
+  isArbiter: boolean;
   projectAddress: Address;
   projectActive: boolean;
 }
@@ -79,6 +89,7 @@ function MilestoneCard({
   status,
   isClient,
   isProvider,
+  isArbiter,
   projectAddress,
   projectActive,
 }: MilestoneCardProps) {
@@ -87,6 +98,32 @@ function MilestoneCard({
   const { execute: approve, isLoading: approveLoading } = useApprove(projectAddress);
   const { execute: requestRevision, isLoading: revisionLoading } = useRequestRevision(projectAddress);
   const { execute: raiseDispute, isLoading: disputeLoading } = useRaiseDispute(projectAddress);
+  const { execute: resolve, isLoading: resolveLoading } = useResolveDisputeWithSplit(projectAddress);
+  const { execute: submitEv, isLoading: evidenceLoading } = useSubmitEvidence(projectAddress);
+
+  const [clientEthStr, setClientEthStr] = useState("");
+  const [evidenceURI, setEvidenceURI] = useState("");
+
+  let clientWei: bigint | null = null;
+  let providerWei: bigint | null = null;
+  let splitError = "";
+  let splitValid = false;
+  if (clientEthStr.trim() !== "") {
+    try {
+      const parsed = parseEther(clientEthStr as `${number}`);
+      if (parsed < 0n) {
+        splitError = "Amount cannot be negative";
+      } else if (parsed > amount) {
+        splitError = "Exceeds milestone amount";
+      } else {
+        clientWei = parsed;
+        providerWei = amount - parsed;
+        splitValid = true;
+      }
+    } catch {
+      splitError = "Invalid amount";
+    }
+  }
 
   const statusLabel = MILESTONE_STATUS[status as keyof typeof MILESTONE_STATUS] ?? "Unknown";
   const badgeVariant = milestoneBadgeVariant(status);
@@ -108,7 +145,10 @@ function MilestoneCard({
             {index + 1}
           </span>
           <div>
-            <p className="font-medium text-sm">{title}</p>
+            <p className="font-medium text-sm">{title.split("\n")[0]}</p>
+            {title.includes("\n") && (
+              <p className="text-xs text-muted-foreground mt-0.5">{title.split("\n").slice(1).join("\n")}</p>
+            )}
             <p className="text-xs text-muted-foreground">{formatEth(amount)}</p>
           </div>
         </div>
@@ -178,6 +218,100 @@ function MilestoneCard({
           )}
         </div>
       )}
+
+      {/* Evidence submission — client or provider on a disputed milestone */}
+      {status === 4 && (isClient || isProvider) && (
+        <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-semibold flex items-center gap-1.5">
+            <FileText className="h-3.5 w-3.5" /> Submit Evidence
+          </p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Evidence URL or IPFS hash"
+              value={evidenceURI}
+              onChange={e => setEvidenceURI(e.target.value)}
+              className="h-8 text-sm flex-1"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              isLoading={evidenceLoading}
+              disabled={!evidenceURI.trim() || evidenceLoading}
+              onClick={() => { submitEv(idx, evidenceURI); setEvidenceURI(""); }}
+            >
+              Submit
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Arbiter resolution panel — only shown during an active dispute */}
+      {status === 4 && isArbiter && (
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-3">
+          <p className="text-xs font-semibold text-destructive flex items-center gap-1.5">
+            <Scale className="h-3.5 w-3.5" /> Arbiter Resolution
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              isLoading={resolveLoading}
+              disabled={resolveLoading}
+              onClick={() => resolve(idx, amount, 0n)}
+            >
+              Award all to Client
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              isLoading={resolveLoading}
+              disabled={resolveLoading}
+              onClick={() => resolve(idx, 0n, amount)}
+            >
+              Award all to Provider
+            </Button>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">Custom split (total: {formatEth(amount)})</p>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1">
+                <p className="text-xs">Client receives (ETH)</p>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  min="0"
+                  placeholder="0.0"
+                  value={clientEthStr}
+                  onChange={e => setClientEthStr(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="flex-1 space-y-1">
+                <p className="text-xs">Provider receives</p>
+                <div className="h-8 flex items-center px-3 rounded-md border border-input bg-muted text-sm text-muted-foreground">
+                  {providerWei !== null ? formatEth(providerWei) : "—"}
+                </div>
+              </div>
+            </div>
+            {splitError && <p className="text-xs text-destructive">{splitError}</p>}
+            <Button
+              size="sm"
+              variant="destructive"
+              className="w-full"
+              isLoading={resolveLoading}
+              disabled={!splitValid || resolveLoading}
+              onClick={() => {
+                if (splitValid && clientWei !== null && providerWei !== null)
+                  resolve(idx, clientWei, providerWei);
+              }}
+            >
+              <Scale className="h-3.5 w-3.5" />
+              Resolve with Custom Split
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -214,9 +348,12 @@ export default function ProjectPage({
   const projectAddress = resolvedAddress as Address;
   const { address: userAddress } = useAccount();
 
+  const [projectTitle] = useState<string | null>(() => getProjectTitle(projectAddress));
   const { data: details, isLoading: detailsLoading } = useProjectDetails(projectAddress);
   const { data: milestones, isLoading: milestonesLoading } = useMilestones(projectAddress);
   const { execute: withdraw, isLoading: withdrawLoading } = useWithdrawFunds(projectAddress);
+  const { execute: claimTimeout, isLoading: claimLoading } = useClaimDisputeTimeout(projectAddress);
+  const { data: disputeDeadline } = useDisputeDeadline(projectAddress);
 
   const isLoading = detailsLoading || milestonesLoading;
 
@@ -248,7 +385,12 @@ export default function ProjectPage({
 
   const isClient = userAddress?.toLowerCase() === client.toLowerCase();
   const isProvider = userAddress?.toLowerCase() === provider.toLowerCase();
+  const isArbiter = userAddress?.toLowerCase() === arbiter.toLowerCase();
   const projectActive = projectStatus === 0;
+
+  const disputedMilestoneIdx = (milestones ?? []).findIndex(m => m.status === 4);
+  const deadlineDate = disputeDeadline ? new Date(Number(disputeDeadline) * 1000) : null;
+  const timeoutClaimable = deadlineDate ? Date.now() > deadlineDate.getTime() : false;
 
   const approvedCount = (milestones ?? []).filter((m) => m.status === 2).length;
 
@@ -265,12 +407,19 @@ export default function ProjectPage({
         </Button>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl font-bold font-mono truncate">{formatAddress(projectAddress)}</h1>
+            <h1 className="text-xl font-bold truncate">
+              {projectTitle ? (
+                <>{projectTitle} <span className="font-mono font-normal text-muted-foreground">({formatAddress(projectAddress)})</span></>
+              ) : (
+                <span className="font-mono">{formatAddress(projectAddress)}</span>
+              )}
+            </h1>
             <Badge variant={projectBadgeVariant(projectStatus) as "success" | "destructive" | "secondary" | "muted"}>
               {projectStatusLabel}
             </Badge>
             {isClient && <Badge variant="outline">You are Client</Badge>}
             {isProvider && <Badge variant="outline">You are Provider</Badge>}
+            {isArbiter && <Badge variant="outline">You are Arbiter</Badge>}
           </div>
           <p className="text-xs text-muted-foreground mt-1 font-mono">{projectAddress}</p>
         </div>
@@ -361,6 +510,7 @@ export default function ProjectPage({
                 status={m.status}
                 isClient={isClient}
                 isProvider={isProvider}
+                isArbiter={isArbiter}
                 projectAddress={projectAddress}
                 projectActive={projectActive}
               />
@@ -374,12 +524,31 @@ export default function ProjectPage({
         <Card className="border-destructive/50 bg-destructive/5">
           <CardContent className="pt-6 flex items-start gap-3">
             <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-sm text-destructive">Dispute Active</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                This project is under dispute. The arbiter ({formatAddress(arbiter)}) will
-                review the situation and make a ruling. Remaining funds are locked until resolved.
-              </p>
+            <div className="flex-1 space-y-2">
+              <div>
+                <p className="font-semibold text-sm text-destructive">Dispute Active</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  The arbiter ({formatAddress(arbiter)}) will review and make a ruling.
+                  Funds are locked until resolved.
+                </p>
+                {deadlineDate && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Resolution deadline: {deadlineDate.toLocaleString()}
+                  </p>
+                )}
+              </div>
+              {isClient && timeoutClaimable && disputedMilestoneIdx >= 0 && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  isLoading={claimLoading}
+                  disabled={claimLoading}
+                  onClick={() => claimTimeout(BigInt(disputedMilestoneIdx))}
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Claim Timeout Refund
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

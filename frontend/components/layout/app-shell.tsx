@@ -5,11 +5,9 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { WrongNetworkBanner } from "@/components/layout/wrong-network-banner";
 import { Toaster } from "@/components/ui/toaster";
 import { MetaMaskGate } from "@/components/auth/metamask-gate";
-import { useRole } from "@/hooks/use-role";
 import { useWalletEvents } from "@/hooks/use-wallet-events";
 
 function ShellContent({ children }: { children: React.ReactNode }) {
-  const { role } = useRole();
   useWalletEvents();
 
   return (
@@ -18,7 +16,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex h-full">
-          <Sidebar role={role} />
+          <Sidebar />
         </div>
         <main className="motion-fade-in flex-1 overflow-y-auto bg-background p-6">
           {children}

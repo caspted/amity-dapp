@@ -24,6 +24,7 @@ export function useCreateProject() {
     isSuccess,
     isError: isReceiptError,
     error: receiptError,
+    data: receiptData,
   } = useWaitForTransactionReceipt({ hash });
   const chainId = useChainId();
   const factoryAddress = CONTRACT_ADDRESSES[chainId]?.factory;
@@ -74,6 +75,7 @@ export function useCreateProject() {
     isConfirming,
     isSuccess,
     hash,
+    receiptData,
   };
 }
 
