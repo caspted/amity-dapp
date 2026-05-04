@@ -17,6 +17,9 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
     error InsufficientBalance();
     error TransferFailed();
     error DisputeActive();
+    error DisputeNotActive();
+    error DeadlineNotReached();
+    error InvalidSplitAmounts();
 
     // Milestone status transitions: Pending → Submitted → Approved/Rejected → Released or Disputed
     enum MilestoneStatus {
@@ -43,6 +46,11 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
     uint256 public releasedAmount;      // Running total of withdrawn funds
     bool public disputeActive;          // Blocks withdrawals/approvals during disputes
 
+    // Dispute governance state
+    uint256 public disputedMilestoneIndex;   // Currently disputed milestone
+    uint256 public disputeDeadline;          // Timestamp by which arbiter must resolve
+    uint256 public constant DISPUTE_WINDOW = 7 days; // Arbiter resolution window
+
     Milestone[] public milestones;      // Array of project tasks
 
     // Events indexed for efficient subgraph filtering
@@ -51,8 +59,10 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
     event MilestoneApproved(uint256 indexed index);
     event RevisionRequested(uint256 indexed index);
     event MilestoneRetried(uint256 indexed index);
-    event DisputeRaised(uint256 indexed index, address indexed raisedBy);
-    event DisputeResolved(uint256 indexed index);
+    event DisputeRaised(uint256 indexed index, address indexed raisedBy, uint256 deadline);
+    event DisputeResolved(uint256 indexed index, address clientRecipient, uint256 clientAmount, address providerRecipient, uint256 providerAmount);
+    event DisputeDeadlineRefund(uint256 indexed index, uint256 refundedAmount);
+    event EvidenceSubmitted(uint256 indexed index, address indexed submittedBy, string evidenceURI);
     event FundsWithdrawn(uint256 amount);
 
     // Initializes project: validates inputs, grants roles, stores milestones. Called by factory.
@@ -180,32 +190,108 @@ contract EscrowProject is AccessControl, ReentrancyGuard {
             msg.sender != client && msg.sender != provider
         ) revert Unauthorized();
         if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
+        if (milestones[_milestoneIndex].status == MilestoneStatus.Disputed) revert InvalidMilestoneStatus();
+        if (milestones[_milestoneIndex].status == MilestoneStatus.Released) revert InvalidMilestoneStatus();
 
         disputeActive = true;
+        disputedMilestoneIndex = _milestoneIndex;
+        disputeDeadline = block.timestamp + DISPUTE_WINDOW;
         milestones[_milestoneIndex].status = MilestoneStatus.Disputed;
-        emit DisputeRaised(_milestoneIndex, msg.sender);
+        emit DisputeRaised(_milestoneIndex, msg.sender, disputeDeadline);
     }
 
-    // Arbiter settles dispute: decides fund distribution (refund to client or pay provider). Uses call() + CEI pattern.
+    // Submit evidence URI for a disputed milestone. Either client or provider can submit.
+    function submitEvidence(uint256 _milestoneIndex, string calldata _evidenceURI) external {
+        if (
+            msg.sender != client && msg.sender != provider
+        ) revert Unauthorized();
+        if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
+        if (milestones[_milestoneIndex].status != MilestoneStatus.Disputed) revert InvalidMilestoneStatus();
+
+        emit EvidenceSubmitted(_milestoneIndex, msg.sender, _evidenceURI);
+    }
+
+    // Arbiter settles dispute with split: divides milestone funds between client and provider.
+    // clientAmount + providerAmount must equal the disputed milestone's amount.
     function resolveDispute(uint256 _milestoneIndex, address recipient, uint256 amount)
         external
         onlyRole(ARBITER_ROLE)
         nonReentrant
     {
         if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
-        if (!disputeActive) revert InvalidMilestoneStatus();
+        if (!disputeActive) revert DisputeNotActive();
         if (amount > address(this).balance) revert InsufficientBalance();
 
         // Update state BEFORE external call (Checks-Effects-Interactions)
         disputeActive = false;
         milestones[_milestoneIndex].status = MilestoneStatus.Released;
+        releasedAmount += amount;
 
         // Transfer funds using call() for better gas semantics and compatibility
         (bool success, ) = recipient.call{value: amount}("");
         if (!success) revert TransferFailed();
 
-        releasedAmount += amount;
-        emit DisputeResolved(_milestoneIndex);
+        emit DisputeResolved(_milestoneIndex, recipient, amount, address(0), 0);
+    }
+
+    // Arbiter splits disputed milestone funds between client and provider. Sum must equal milestone amount.
+    function resolveDisputeWithSplit(
+        uint256 _milestoneIndex,
+        uint256 _clientAmount,
+        uint256 _providerAmount
+    )
+        external
+        onlyRole(ARBITER_ROLE)
+        nonReentrant
+    {
+        if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
+        if (!disputeActive) revert DisputeNotActive();
+        if (_clientAmount + _providerAmount != milestones[_milestoneIndex].amount) revert InvalidSplitAmounts();
+        if (_clientAmount + _providerAmount > address(this).balance) revert InsufficientBalance();
+
+        // Update state BEFORE external calls (Checks-Effects-Interactions)
+        disputeActive = false;
+        milestones[_milestoneIndex].status = MilestoneStatus.Released;
+        releasedAmount += _clientAmount + _providerAmount;
+
+        // Transfer client portion
+        if (_clientAmount > 0) {
+            (bool s1, ) = client.call{value: _clientAmount}("");
+            if (!s1) revert TransferFailed();
+        }
+
+        // Transfer provider portion
+        if (_providerAmount > 0) {
+            (bool s2, ) = provider.call{value: _providerAmount}("");
+            if (!s2) revert TransferFailed();
+        }
+
+        emit DisputeResolved(_milestoneIndex, client, _clientAmount, provider, _providerAmount);
+    }
+
+    // Client can claim refund if arbiter misses the dispute resolution deadline
+    function claimDisputeTimeout(uint256 _milestoneIndex)
+        external
+        nonReentrant
+    {
+        if (msg.sender != client) revert Unauthorized();
+        if (!disputeActive) revert DisputeNotActive();
+        if (block.timestamp < disputeDeadline) revert DeadlineNotReached();
+        if (_milestoneIndex >= milestones.length) revert InvalidMilestoneIndex();
+        if (milestones[_milestoneIndex].status != MilestoneStatus.Disputed) revert InvalidMilestoneStatus();
+
+        uint256 refundAmount = milestones[_milestoneIndex].amount;
+        if (refundAmount > address(this).balance) revert InsufficientBalance();
+
+        // Update state BEFORE external call
+        disputeActive = false;
+        milestones[_milestoneIndex].status = MilestoneStatus.Released;
+        releasedAmount += refundAmount;
+
+        (bool success, ) = client.call{value: refundAmount}("");
+        if (!success) revert TransferFailed();
+
+        emit DisputeDeadlineRefund(_milestoneIndex, refundAmount);
     }
 
     // Provider withdraws all approved milestone funds atomically. Blocked during disputes. Marks milestones Released.
