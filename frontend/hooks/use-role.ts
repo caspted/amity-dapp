@@ -3,7 +3,7 @@
 import { useReadContract, usePublicClient } from "wagmi";
 import { useAccount, useChainId } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { parseAbiItem, type Address } from "viem";
+import { type Address } from "viem";
 import { CONTRACT_ADDRESSES, FACTORY_ABI, ESCROW_ABI } from "@/lib/contracts";
 
 export type UserRole = "client" | "provider" | "both" | "none";
@@ -36,35 +36,48 @@ export function useRole() {
     queryFn: async () => {
       if (!address || !factoryAddress || !publicClient) return [];
 
-      const logs = await publicClient.getLogs({
-        address: factoryAddress,
-        event: parseAbiItem(
-          "event ProjectCreated(address indexed client, address indexed provider, address indexed projectAddress, uint256 totalAmount)"
-        ),
-        fromBlock: 0n,
-        toBlock: "latest",
-      });
+      try {
+        // Get total number of deployed projects
+        const count = (await publicClient.readContract({
+          address: factoryAddress,
+          abi: FACTORY_ABI,
+          functionName: "getProjectsCount",
+        })) as bigint;
 
-      const allAddresses = logs
-        .map((l) => l.args.projectAddress)
-        .filter((a): a is Address => !!a);
+        if (count === 0n) return [];
 
-      const results: Address[] = [];
-      for (const projAddr of allAddresses) {
-        try {
-          const detail = (await publicClient.readContract({
-            address: projAddr,
-            abi: ESCROW_ABI,
-            functionName: "getProjectDetails",
-          })) as [Address, Address, Address, bigint, bigint, boolean];
-          if (detail[2].toLowerCase() === address.toLowerCase()) {
-            results.push(projAddr);
+        // Fetch every project address by index
+        const allAddresses = (await Promise.all(
+          Array.from({ length: Number(count) }, (_, i) =>
+            publicClient.readContract({
+              address: factoryAddress,
+              abi: FACTORY_ABI,
+              functionName: "getProject",
+              args: [BigInt(i)],
+            })
+          )
+        )) as Address[];
+
+        // Filter down to projects where the connected wallet is the arbiter
+        const results: Address[] = [];
+        for (const projAddr of allAddresses) {
+          try {
+            const detail = (await publicClient.readContract({
+              address: projAddr,
+              abi: ESCROW_ABI,
+              functionName: "getProjectDetails",
+            })) as [Address, Address, Address, bigint, bigint, boolean];
+            if (detail[2].toLowerCase() === address.toLowerCase()) {
+              results.push(projAddr);
+            }
+          } catch {
+            // skip contracts that fail to read
           }
-        } catch {
-          // skip projects that fail to read
         }
+        return results;
+      } catch {
+        return [];
       }
-      return results;
     },
   });
 

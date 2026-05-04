@@ -22,7 +22,8 @@ import { useReadContract } from "wagmi";
 import { ESCROW_ABI } from "@/lib/contracts";
 import { type Address } from "viem";
 import { PROJECT_STATUS } from "@/lib/utils";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
+import { getProjectTitle } from "@/lib/project-titles";
 
 function ProjectStatusBadge({ status }: { status: number }) {
   const label = PROJECT_STATUS[status as keyof typeof PROJECT_STATUS] ?? "Unknown";
@@ -61,6 +62,8 @@ function ProjectRow({
     functionName: "getProjectDetails",
   });
 
+  const [title] = useState<string | null>(() => getProjectTitle(address));
+
   if (!data) return <Skeleton className="h-16 w-full rounded-md" />;
 
   const [client, provider, arbiter, totalAmount, releasedAmount, disputeActive] = data;
@@ -78,7 +81,13 @@ function ProjectRow({
       className="flex items-center justify-between p-4 rounded-lg border border-border bg-card hover:bg-accent transition-colors group"
     >
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-mono font-medium">{formatAddress(address)}</p>
+        <p className="text-sm font-medium">
+          {title ? (
+            <>{title} <span className="font-mono font-normal text-muted-foreground">({formatAddress(address)})</span></>
+          ) : (
+            <span className="font-mono">{formatAddress(address)}</span>
+          )}
+        </p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>Client: {formatAddress(client)}</span>
           <span>·</span>

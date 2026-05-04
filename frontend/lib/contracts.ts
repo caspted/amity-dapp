@@ -37,6 +37,20 @@ export const FACTORY_ABI = [
     outputs: [{ name: "", type: "address[]" }],
   },
   {
+    name: "getProjectsCount",
+    type: "function",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    name: "getProject",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "_index", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
     name: "ProjectCreated",
     type: "event",
     inputs: [
