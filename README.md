@@ -2,6 +2,15 @@
 
 Amity is a decentralized escrow platform designed to facilitate secure, milestone-based agreements between clients and service providers (freelancers). It ensures trust and accountability by locking funds in a smart contract and releasing them only upon the successful completion and approval of predefined milestones. In the event of a disagreement, a designated neutral Arbiter can resolve disputes.
 
+## 📸 Screenshot
+
+![Amity App Screenshot](screenshot-placeholder.png)
+
+## 👥 Group Members & Roles
+
+- **[Member Name Placeholder]** - [Role Placeholder]
+- **[Member Name Placeholder]** - [Role Placeholder]
+
 ## 🌟 Key Features
 
 - **Milestone-Based Escrow**: Funds are locked upfront and released incrementally as milestones are submitted by the provider and approved by the client.
@@ -94,8 +103,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to interact 
 
 ## 🌍 Deployment details
 
-The smart contracts are currently configured for deployment on the **Ethereum Sepolia Testnet**.
+The smart contracts are currently configured for deployment on the **Ethereum Sepolia Testnet**. The frontend application connects to MetaMask and interacts with the deployed contract.
 
+- **Live Frontend URL**: [Deployed Site URL Placeholder]
 - **ProjectFactory Address**: `0x35255dB702fE5cA1Cad3AdbF24Fd5E0C825d0096` (Sepolia)
 - **Subgraph Endpoint**: Hosted on The Graph Studio (`amity-subgraph`)
 
@@ -108,6 +118,12 @@ The smart contracts are currently configured for deployment on the **Ethereum Se
 5. **Disputes (If necessary)**:
    - Either party can call `raiseDispute()`.
    - Arbiter investigates and calls `resolveDispute()` or `resolveDisputeWithSplit()`.
+
+## 📚 Credits & References
+
+- [Tutorials/Docs used Placeholder]
+- [AI tools used Placeholder]
+- [Other references]
 
 ## 📄 License
 
