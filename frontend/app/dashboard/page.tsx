@@ -64,6 +64,15 @@ function ProjectRow({
 
   const [title] = useState<string | null>(() => getProjectTitle(address));
 
+  const { data: milestones } = useReadContract({
+    address,
+    abi: ESCROW_ABI,
+    functionName: "getMilestones",
+    query: { enabled: title === null && !!address },
+  });
+
+  const displayTitle = title ?? (milestones?.[0]?.title?.split("\n")[0] ?? null);
+
   if (!data) return <Skeleton className="h-16 w-full rounded-md" />;
 
   const [client, provider, arbiter, totalAmount, releasedAmount, disputeActive] = data;
@@ -82,8 +91,8 @@ function ProjectRow({
     >
       <div className="flex flex-col gap-1">
         <p className="text-sm font-medium">
-          {title ? (
-            <>{title} <span className="font-mono font-normal text-muted-foreground">({formatAddress(address)})</span></>
+          {displayTitle ? (
+            <>{displayTitle} <span className="font-mono font-normal text-muted-foreground">({formatAddress(address)})</span></>
           ) : (
             <span className="font-mono">{formatAddress(address)}</span>
           )}

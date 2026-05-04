@@ -354,6 +354,7 @@ export default function ProjectPage({
   const { execute: withdraw, isLoading: withdrawLoading } = useWithdrawFunds(projectAddress);
   const { execute: claimTimeout, isLoading: claimLoading } = useClaimDisputeTimeout(projectAddress);
   const { data: disputeDeadline } = useDisputeDeadline(projectAddress);
+  const [now] = useState(Date.now);
 
   const isLoading = detailsLoading || milestonesLoading;
 
@@ -390,7 +391,7 @@ export default function ProjectPage({
 
   const disputedMilestoneIdx = (milestones ?? []).findIndex(m => m.status === 4);
   const deadlineDate = disputeDeadline ? new Date(Number(disputeDeadline) * 1000) : null;
-  const timeoutClaimable = deadlineDate ? Date.now() > deadlineDate.getTime() : false;
+  const timeoutClaimable = disputeActive && !!deadlineDate && now > deadlineDate.getTime();
 
   const approvedCount = (milestones ?? []).filter((m) => m.status === 2).length;
 
