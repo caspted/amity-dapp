@@ -3,7 +3,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RainbowKitProvider, darkTheme, lightTheme } from "@rainbow-me/rainbowkit";
 import { WagmiProvider } from "wagmi";
+import { ApolloProvider } from "@apollo/client/react";
 import { wagmiConfig } from "@/lib/wagmi";
+import { apolloClient } from "@/lib/apollo";
 import { useState } from "react";
 import { ThemeProvider, useTheme } from "@/hooks/use-theme";
 import { useMounted } from "@/hooks/use-mounted";
@@ -40,7 +42,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <ThemeProvider>
       <WagmiProvider config={wagmiConfig}>
         <QueryClientProvider client={queryClient}>
-          <RainbowKitWithTheme>{children}</RainbowKitWithTheme>
+          <ApolloProvider client={apolloClient}>
+            <RainbowKitWithTheme>{children}</RainbowKitWithTheme>
+          </ApolloProvider>
         </QueryClientProvider>
       </WagmiProvider>
     </ThemeProvider>

@@ -1,15 +1,17 @@
 "use client";
 
 import { connectorsForWallets } from "@rainbow-me/rainbowkit";
-import { injectedWallet, metaMaskWallet, coinbaseWallet } from "@rainbow-me/rainbowkit/wallets";
+import { metaMaskWallet, injectedWallet, coinbaseWallet } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http } from "wagmi";
-import { hardhat, sepolia } from "wagmi/chains";
+import { hardhat, mainnet, sepolia } from "wagmi/chains";
+
+const isDev = process.env.NODE_ENV === "development";
 
 const connectors = connectorsForWallets(
   [
     {
       groupName: "Wallets",
-      wallets: [injectedWallet, metaMaskWallet, coinbaseWallet],
+      wallets: [metaMaskWallet, injectedWallet, coinbaseWallet],
     },
   ],
   {
@@ -18,14 +20,20 @@ const connectors = connectorsForWallets(
   }
 );
 
+const chains = isDev ? ([sepolia, hardhat, mainnet] as const) : ([sepolia, mainnet] as const);
+
 export const wagmiConfig = createConfig({
-  chains: [sepolia, hardhat],
+  chains,
   connectors,
   transports: {
     [sepolia.id]: http(),
     [hardhat.id]: http(),
+    [mainnet.id]: http(),
   },
   ssr: true,
 });
 
-export { sepolia, hardhat };
+export { hardhat, mainnet, sepolia };
+
+export const APP_CHAINS = chains.filter((c) => c.id !== mainnet.id);
+export const APP_CHAIN_IDS: number[] = APP_CHAINS.map((c) => c.id);

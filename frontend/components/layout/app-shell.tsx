@@ -1,37 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-import { useAccount } from "wagmi";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
+import { WrongNetworkBanner } from "@/components/layout/wrong-network-banner";
 import { Toaster } from "@/components/ui/toaster";
+import { MetaMaskGate } from "@/components/auth/metamask-gate";
 import { useRole } from "@/hooks/use-role";
-import { useMounted } from "@/hooks/use-mounted";
+import { useWalletEvents } from "@/hooks/use-wallet-events";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
-  const { status } = useAccount();
-  const router = useRouter();
+function ShellContent({ children }: { children: React.ReactNode }) {
   const { role } = useRole();
-  const mounted = useMounted();
-
-  useEffect(() => {
-    if (mounted && status === "disconnected") router.push("/");
-  }, [mounted, status, router]);
-
-  if (!mounted || status === "reconnecting" || status === "connecting") {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (status === "disconnected") return null;
+  useWalletEvents();
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
+      <WrongNetworkBanner />
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         <div className="hidden md:flex h-full">
@@ -43,5 +26,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
       <Toaster />
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <MetaMaskGate>
+      <ShellContent>{children}</ShellContent>
+    </MetaMaskGate>
   );
 }
